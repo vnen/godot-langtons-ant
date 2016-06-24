@@ -1,0 +1,22 @@
+[gd_scene load_steps=2 format=1]
+
+[ext_resource path="res://bw-tileset.png" type="Texture" id=1]
+
+[node name="BlackWhite" type="Node2D"]
+
+[node name="Black" type="Sprite" parent="."]
+
+texture = ExtResource( 1 )
+centered = false
+region = true
+region_rect = Rect2( 0, 0, 10, 10 )
+
+[node name="White" type="Sprite" parent="."]
+
+transform/pos = Vector2( 10, 0 )
+texture = ExtResource( 1 )
+centered = false
+region = true
+region_rect = Rect2( 10, 0, 10, 10 )
+
+
