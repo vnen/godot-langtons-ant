@@ -70,6 +70,21 @@ func _ready():
 	# Start screenshot thread
 	screenshot_thread.start(self, "screenshot_thread", grid)
 
+func _process(delta):
+	var change = false
+	var color
+
+	if Input.is_mouse_button_pressed(BUTTON_LEFT):
+		change = true
+		color = BLACK
+	elif Input.is_mouse_button_pressed(BUTTON_RIGHT):
+		change = true
+		color = WHITE
+
+	if change and can_paint and not inside_control:
+		var grid = get_node("Grid")
+		grid.set_cellv(grid.world_to_map((get_global_mouse_pos())), color)
+
 func _input(event):
 	if dragging and event.type == InputEvent.MOUSE_MOTION:
 		translate_camera(get_node("Camera"), event.relative_pos * (-mouse_speed))
@@ -106,20 +121,28 @@ func _input(event):
 	if event.is_action("minus"):
 		get_node("GUI/Speed").set_value(get_node("GUI/Speed").get_value() - 0.1)
 
-func _process(delta):
-	var change = false
-	var color
+func reset():
+	stop()
+	reset_grid()
+	translate_camera(get_node("Camera"), Vector2(), true)
+	get_node("AntMarker").set_texture(black_ant)
+	# Create the ant
+	ant = Ant.new(ant_start, get_node("Grid"), get_node("AntMarker"), [black_ant,white_ant])
 
-	if Input.is_mouse_button_pressed(BUTTON_LEFT):
-		change = true
-		color = BLACK
-	elif Input.is_mouse_button_pressed(BUTTON_RIGHT):
-		change = true
-		color = WHITE
+func stop():
+	get_node("Animation").stop(true)
+	can_paint = true
 
-	if change and can_paint and not inside_control:
-		var grid = get_node("Grid")
-		grid.set_cellv(grid.world_to_map((get_global_mouse_pos())), color)
+func play():
+	can_paint = false
+	get_node("Animation").play("Langton")
+
+func reset_grid():
+	var grid = get_node("Grid")
+	# Empty the grid
+	for x in range (grid_size.pos.x, grid_size.size.x - grid_size.pos.x):
+		for y in range (grid_size.pos.y, grid_size.size.y - grid_size.pos.y):
+			grid.set_cell(x, y, WHITE)
 
 func move_ant():
 	ant.move()
@@ -146,39 +169,10 @@ func translate_camera(camera, amount, absolute=false):
 	camera.set_pos(pos)
 	get_node("GUI/CameraPos").set_text(str(pos))
 
-func _on_speed_value_changed(value):
-	current_speed = value
-	get_node("Animation").set_speed(value)
-	get_node("GUI/SpeedShow").set_text(str(value).pad_decimals(1) + "x")
-
-func _on_speed_mouse_enter():
-	inside_control = true
-
-func _on_speed_mouse_exit():
-	inside_control = false
-
-func reset():
-	stop()
-	reset_grid()
-	translate_camera(get_node("Camera"), Vector2(), true)
-	get_node("AntMarker").set_texture(black_ant)
-	# Create the ant
-	ant = Ant.new(ant_start, get_node("Grid"), get_node("AntMarker"), [black_ant,white_ant])
-
-func stop():
-	get_node("Animation").stop(true)
-	can_paint = true
-
-func play():
-	can_paint = false
-	get_node("Animation").play("Langton")
-
-func reset_grid():
-	var grid = get_node("Grid")
-	# Empty the grid
-	for x in range (grid_size.pos.x, grid_size.size.x - grid_size.pos.x):
-		for y in range (grid_size.pos.y, grid_size.size.y - grid_size.pos.y):
-			grid.set_cell(x, y, WHITE)
+func screenshot_thread(grid):
+	while true:
+		screenshot_lock.wait()
+		screenshot(grid)
 
 func screenshot(grid):
 	var scale = 10
@@ -205,10 +199,20 @@ func screenshot(grid):
 	img.save_png("user://langton-" + str(OS.get_unix_time()) + "-" + str(int(rand_range(1,20000))) + ".png")
 	emit_signal("image_saved")
 
-func screenshot_thread(grid):
-	while true:
-		screenshot_lock.wait()
-		screenshot(grid)
+func _on_speed_value_changed(value):
+	current_speed = value
+	get_node("Animation").set_speed(value)
+	get_node("GUI/SpeedShow").set_text(str(value).pad_decimals(1) + "x")
+
+func _on_speed_mouse_enter():
+	inside_control = true
+
+func _on_speed_mouse_exit():
+	inside_control = false
+
+func _on_image_saved():
+	get_node("GUI/GUIAnimation").play("image_saved")
+
 
 class Ant:
 	extends Reference
@@ -240,7 +244,3 @@ class Ant:
 			dir = Vector2(dir.y, -dir.x)
 		else:
 			dir = Vector2(-dir.y, dir.x)
-
-
-func _on_image_saved():
-	get_node("GUI/GUIAnimation").play("image_saved")
